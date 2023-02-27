@@ -1,0 +1,66 @@
+package com.impact.pms.model;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldNameConstants;
+
+@Data
+
+@NoArgsConstructor
+@Entity
+@Table(name="Patient_Demographic_Details")
+public class DemographicDetails {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long demographicId;
+	private Long patientId;
+	private String firstName;
+	private String lastName;
+	private LocalDate dateOFBirth;
+	private int age;
+	private String gender;
+	private String race;
+	private String ethinicity;
+	private String languagesKnown;
+	private String email;
+	private String homeAddress;
+	private Long contact;
+	
+	@OneToOne(cascade = CascadeType.ALL)
+	@JoinColumn(name="emergencyContact_id",referencedColumnName = "emgId")
+	private EmergencyContactInfo emergencyContact;
+	
+	@Column(nullable = false, columnDefinition = "int default 0") 
+	 private int anyAllergy;
+	
+	//@OneToMany(cascade = CascadeType.ALL,mappedBy = "demographicDetail")
+	//@JoinColumn(name = "pat_allergy_id")
+	@OneToMany(cascade = CascadeType.ALL)
+	@JoinColumn(name = "pat_demographicId", referencedColumnName = "demographicId")
+  //  @OneToMany(cascade = CascadeType.ALL)
+  //  @JoinColumn( referencedColumnName = "demographicId")
+	 private List<Allergy> allergy;
+
+	
+	
+	 
+}
