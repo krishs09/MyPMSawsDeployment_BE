@@ -34,9 +34,8 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			 <groupId>com.microsoft.sqlserver</groupId>
-			    <artifactId>mssql-jdbc</artifactId>
-				<version>10.2.0.jre8</version>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
 			
 		</dependency>
 		<dependency>

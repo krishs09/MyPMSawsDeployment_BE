@@ -6,7 +6,13 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.impact.pms.customException.DemographicDetailsExistsException;
+import com.impact.pms.customException.DemographicDetailsNotFoundException;
+import com.impact.pms.customException.PatientAlreadyExistsException;
+import com.impact.pms.customException.PatientNotFoundException;
 import com.impact.pms.model.Allergy;
 import com.impact.pms.model.DemographicDetailRequest;
 import com.impact.pms.model.DemographicDetails;
@@ -20,6 +26,7 @@ import com.impact.pms.repository.UserDetailsRepository;
 import com.impact.pms.service.DemographicDetailsService;
 
 @Service
+@Transactional
 public class DemographicDetailsServiceImpl implements DemographicDetailsService {
 
 	@Autowired
@@ -33,63 +40,97 @@ public class DemographicDetailsServiceImpl implements DemographicDetailsService 
 
 	@Autowired
 	UserDetailsRepository userRepo;
+	
+	@Override
+	public UserPatient registerPatinet(UserPatient patient) {
+		
+		int count= userRepo.checkIfPatientExists(patient.getFirstname(),patient.getLastname(),patient.getEmail());
+		System.out.println("Count: "+count);
+		if(count > 0) {
+			throw new PatientAlreadyExistsException();
+		}else {
+			UserPatient user =userRepo.save(patient);
+			return user;
+		}
+	}
 
 	@Override
+	@Transactional(propagation = Propagation.REQUIRED,rollbackFor = Exception.class)
 	public DemographicDetails saveDmgDetail(DemographicDetailRequest request) {
+		
 		 DemographicDetails dd = request.getDemographicDetails();
 		 dd.setPatientId(request.getPatientId());
-		DemographicDetails savedDD = null;
+		 
+		 System.out.println("Demogph details: "+dd);
+		
+		 DemographicDetails savedDD = null;
 		int status = 0;
 
-		Optional<DemographicDetailRequest> opt3 = Optional.of(request);
+		Optional<DemographicDetailRequest> optRequest = Optional.of(request);
 
-		if (opt3.isPresent()) {
-			savedDD = dmgRepository.save(dd);
-
-			Optional<DemographicDetails> opt2 = Optional.of(savedDD);
+		if (optRequest.isPresent()) {
 			
-			if(opt2.isPresent()) {
+			Optional<DemographicDetails> dmgExists = getDmgDetail(dd.getPatientId());
+			
+		//	Optional<DemographicDetails> optExists = Optional.of(dmgExists);
+			
+			if(dmgExists.isPresent()) {
+				throw new DemographicDetailsExistsException();
+			}else {
 				
-				EmergencyContactInfo eInfo = request.getEmergencyContact();
+				savedDD = dmgRepository.save(dd);
 				
-				EmergencyContactInfo savedEC =  emergencyRepository.save(eInfo);
+				Optional<DemographicDetails> opt2 = Optional.of(savedDD);
 				
-				int result =dmgRepository.mapEmergencyContactInfo(savedEC.getEmgId(), savedDD.getDemographicId());
-				
-				if(result > 0) {
+				if(opt2.isPresent()) {
 					
-					//Once EC is saved merge with DD
-					savedDD.setEmergencyContact(savedEC);
-					System.out.println(request.getDemographicDetails().getAnyAllergy());
-					if(request.getDemographicDetails().getAnyAllergy()) {
-						System.out.println("HAS ALLERGY");
-						List<Allergy> allergyList = request.getAllergy();
-						List<Allergy> savedAlrgList = new ArrayList<>();
+					EmergencyContactInfo eInfo = request.getEmergencyContact();
+					eInfo.setPatientId(request.getPatientId());
+					
+					EmergencyContactInfo savedEC =  emergencyRepository.save(eInfo);
+					
+					System.out.println("Saved Emg Id : "  +savedEC.getEmgId()+ " Saved DId: " +savedDD.getDemographicId());
+					
+					int result =dmgRepository.mapEmergencyContactInfo(savedEC.getEmgId(), savedDD.getDemographicId());
+					
+					if(result > 0) {
 						
-						int count=0;
-						for(Allergy allergy: allergyList) {
+						//Once EC is saved merge with DD
+						savedDD.setEmergencyContact(savedEC);
+						System.out.println(request.getDemographicDetails().getAnyAllergy());
+						if(request.getDemographicDetails().getAnyAllergy()) {
+							System.out.println("HAS ALLERGY");
+							List<Allergy> allergyList = request.getAllergy();
+							List<Allergy> savedAlrgList = new ArrayList<>();
 							
-							allergy = allergyList.get(count);
-							allergy.setDemographicId(savedDD.getDemographicId());
-							Allergy savedAlrgy = allergyRepository.save(allergy);
-							
-							Optional<Allergy> opt4 = Optional.of(savedAlrgy);
-							if(opt4.isPresent()){
+							int count=0;
+							for(Allergy allergy: allergyList) {
 								
-								savedAlrgList.add(savedAlrgy);
+								allergy = allergyList.get(count);
+								allergy.setDemographicId(savedDD.getDemographicId());
+								allergy.setPatientId(request.getPatientId());
+								Allergy savedAlrgy = allergyRepository.save(allergy);
 								
-								
-								status=1;
+								Optional<Allergy> opt4 = Optional.of(savedAlrgy);
+								if(opt4.isPresent()){
+									
+									savedAlrgList.add(savedAlrgy);
+									
+									
+									status=1;
+								}
+								count++;
 							}
-							count++;
+							
+							savedDD.setAllergy(savedAlrgList);
 						}
-						
-						savedDD.setAllergy(savedAlrgList);
 					}
 				}
+				
 			}
+			
 		}
-
+		
 		return savedDD;
 	}
 
@@ -101,15 +142,25 @@ public class DemographicDetailsServiceImpl implements DemographicDetailsService 
 		if (usr.isPresent()) {
 			return usr.get();
 		} else {
-			return null;
+			throw new PatientNotFoundException();
 		}
-
 	}
 
 	@Override
-	public DemographicDetails getDmgDetail(Long patId) {
-		DemographicDetails dmg=	dmgRepository.findByPatientId(patId);
+	public Optional<DemographicDetails> getDmgDetail(Long patId) {
+		System.out.println("Patinet id: "+patId);
+		Optional<DemographicDetails> dmg=	dmgRepository.findByPatientId(patId);
 		return dmg;
+		
+		/*
+		 * if(dmg.isPresent()) { return dmg.get(); }else {
+		 * 
+		 * //throw new DemographicDetailsNotFoundException(); //return null; }
+		 */
+		
+		
 	}
+
+
 
 }

@@ -1,5 +1,7 @@
 package com.impact.pms.controller;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,13 @@ public class DemographicDetailController {
 	@Autowired
 	private DemographicDetailsService service;
 	
+	@PostMapping("/registration")
+	public ResponseEntity<UserPatient>  patientRegistration( @RequestBody UserPatient patient) {
+		System.out.println("Registration REQUEST: "+patient);
+		UserPatient savedUser =service.registerPatinet(patient);
+		return new ResponseEntity<UserPatient>(savedUser, HttpStatus.OK);
+	}
+	
 	@PostMapping("/save")
 	public ResponseEntity<DemographicDetails>  saveDemographicDetails( @RequestBody DemographicDetailRequest demographicDetails) {
 		System.out.println("REQUEST: "+demographicDetails);
@@ -32,8 +41,8 @@ public class DemographicDetailController {
 	@GetMapping("/getDemographicDetail")
 	public ResponseEntity<DemographicDetails> getPatientDemographicDetails(@RequestParam Long patientId){
 		
-		DemographicDetails details =service.getDmgDetail(patientId);
-		return new ResponseEntity<DemographicDetails>(details, HttpStatus.OK);
+		Optional<DemographicDetails> details =service.getDmgDetail(patientId);
+		return new ResponseEntity<DemographicDetails>(details.get(), HttpStatus.OK);
 	}
 	
 	@GetMapping("/getpatientById")
