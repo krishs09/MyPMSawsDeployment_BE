@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class VisitDetailsRequest {
 
 	private Long patientId;
+	private Long physicianId;
 	private Long appointmentId;
 	private VitalSign vitalSign;
 	private List<Diagnosis> diagnosis;

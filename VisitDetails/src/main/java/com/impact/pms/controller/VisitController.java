@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.impact.pms.model.Appointment;
+import com.impact.pms.model.AppointmentHistory;
+import com.impact.pms.model.Appointments;
 import com.impact.pms.model.MasterDataResponse;
 import com.impact.pms.model.VisitDetailsRequest;
 import com.impact.pms.model.VisitDetailsResponse;
@@ -29,17 +30,17 @@ public class VisitController {
 	public ResponseEntity<VisitDetailsRequest> saveVisitDetails(@RequestBody VisitDetailsRequest request){
 		System.out.println("VISIT REQUEST: "+request);
 		VisitDetailsRequest vr = service.saveVisitDetails(request);
-		System.out.println("VISIT REQUEST: "+request);
+
 		return new ResponseEntity<VisitDetailsRequest>(vr,HttpStatus.OK);
 	}
 	
 	//APPOINTMENT ID WILL BE SENT ALONG WITH PATIENT ID AND DETAILS, WHEN ROUTED TO YOUR HOME PAGE
 	
 	@GetMapping("/getappointmentId")
-	public ResponseEntity<Appointment> getPatientDetailsById(@RequestParam long patientId){
+	public ResponseEntity<AppointmentHistory> getPatientDetailsById(@RequestParam long appointmentId){
 		
-		Appointment a =service.getAppointmentDetails(patientId);
-		return new ResponseEntity<Appointment>(a,HttpStatus.OK);
+		AppointmentHistory a =service.getAppointmentDetails(appointmentId);
+		return new ResponseEntity<AppointmentHistory>(a,HttpStatus.OK);
 	}
 	
 	@GetMapping("/getVisitdetail")
@@ -59,11 +60,28 @@ public class VisitController {
 	}
 	
 	@GetMapping("/getallappointment")
-	public ResponseEntity<List<Appointment>> getAllAppointment(@RequestParam Long patientId){
+	public ResponseEntity<List<AppointmentHistory>> getAllAppointment(@RequestParam Long patientId){
 		
-		List<Appointment> list =service.getPatientsAppoinmentAll(patientId);
+		List<AppointmentHistory> list =service.getPatientsAppoinmentAll(patientId);
 		System.out.println(list);
-		return new ResponseEntity<List<Appointment>>(list,HttpStatus.OK);
+		return new ResponseEntity<List<AppointmentHistory>>(list,HttpStatus.OK);
 	}
+	
+	@GetMapping("/getallappointmentForPhysician")
+	public ResponseEntity<List<Appointments>> getAllAppointmentForPhysician(@RequestParam Long physicianId){
+		
+		List<Appointments> list =service.getAppoinmentsForPhysician(physicianId);
+		System.out.println(list);
+		return new ResponseEntity<List<Appointments>>(list,HttpStatus.OK);
+	}
+	
+	@GetMapping("/consultationAppt")
+	public String updateAppointmentForOnlyConsultation(@RequestParam long patientId, @RequestParam long appointmentId){
+	
+	//	VisitDetailsRequest vr = service.saveVisitDetails(request);
+
+		return "Done";
+	}
+	
 	
 }

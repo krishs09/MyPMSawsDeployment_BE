@@ -1,6 +1,11 @@
 package com.impact.pms.serviceImpl;
 
+import java.nio.file.DirectoryNotEmptyException;
+import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,7 +14,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import com.impact.pms.model.Appointment;
+import com.impact.pms.customException.AppointmentNotFoundException;
+import com.impact.pms.model.AppointmentHistory;
+import com.impact.pms.model.Appointments;
 import com.impact.pms.model.Diagnosis;
 import com.impact.pms.model.DiagnosisMaster;
 import com.impact.pms.model.MasterDataResponse;
@@ -20,7 +27,8 @@ import com.impact.pms.model.ProcedureMaster;
 import com.impact.pms.model.VisitDetailsRequest;
 import com.impact.pms.model.VisitDetailsResponse;
 import com.impact.pms.model.VitalSign;
-import com.impact.pms.repository.AppointmentRepository;
+import com.impact.pms.repository.AppointmentHistoryRepository;
+import com.impact.pms.repository.AppointmentsRepository;
 import com.impact.pms.repository.DiagnosisRepository;
 import com.impact.pms.repository.MasterDiagnosisRepository;
 import com.impact.pms.repository.MasterMedicationRepository;
@@ -46,7 +54,10 @@ public class VisitServiceImpl implements VisitService{
 	MedicationRepository medRepo;
 	
 	@Autowired
-	AppointmentRepository appointmentRepo;
+	AppointmentHistoryRepository appointmentHistoryRepo;
+	
+	@Autowired
+	AppointmentsRepository appointmentsRepo;
 	
 	@Autowired
 	MasterDiagnosisRepository masterDiagRepo;
@@ -104,7 +115,21 @@ public class VisitServiceImpl implements VisitService{
 			med.setPatientId(request.getPatientId());
 			med.setAppointmentId(request.getAppointmentId());
 			 savedMed = medRepo.save(med);
+			
+			 //Appointment Table
+			 udpateAppointmentTableWithActiveStatus(0,request.getAppointmentId());
+			 
+			 //Apointment history table
 			 updateExaminationColumn(request.getAppointmentId(),request.getPatientId());
+			 
+			AppointmentHistory aptHist = new AppointmentHistory();
+			aptHist.setAppointmentId(request.getAppointmentId());
+			aptHist.setPatientId(request.getPatientId());
+			aptHist.setDidExaminationhappened(1);
+			aptHist.setExaminedBy(request.getPhysicianId());
+			
+			Optional<AppointmentHistory> optH = inssertIntoAppointmentHistory(aptHist);
+			
 		}
 		
 		vr.setPatientId(savedDiag.getPatientId());
@@ -117,69 +142,112 @@ public class VisitServiceImpl implements VisitService{
 		return vr;
 	}
 	
+	public int udpateAppointmentTableWithActiveStatus(int status, Long aptId) {
+	
+		int count = appointmentsRepo.updateActiveStatus(status,aptId);
+		return count;
+		
+	}
+	
+	public Optional<AppointmentHistory> inssertIntoAppointmentHistory(AppointmentHistory aptHist) {
+		AppointmentHistory savedAptHistory = appointmentHistoryRepo.save(aptHist);
+		
+		Optional<AppointmentHistory> optH = Optional.of(savedAptHistory);
+		if(optH.isPresent()) {
+			System.out.println("Appointment history saved");
+		}
+		return optH;
+	}
+	
 	public int updateExaminationColumn(Long aptId,Long patId) {
-		int status = appointmentRepo.updateExaminationColumn(aptId,patId);
+		int status = appointmentHistoryRepo.updateExaminationColumn(aptId,patId);
 		return status;
 	}
 
 
 	@Override
-	public Appointment getAppointmentDetails(Long patientId) {
+	public AppointmentHistory getAppointmentDetails(Long appointmentId) {
 		
-		Optional<Appointment> apt = appointmentRepo.findById(patientId);
-		return apt.get();
+		Optional<AppointmentHistory> apt = appointmentHistoryRepo.findById(appointmentId);
+		
+		if(apt.isPresent()) {
+			return apt.get();
+		}else {
+			throw new AppointmentNotFoundException();
+		}
+		
 	}
 
 
 	@Override
 	public VisitDetailsResponse getVisitDetails(Long patientId, Long appointmentId) {
 		
-		List<Object[]> visitDetails = appointmentRepo.getPatientVisitDetails(patientId, appointmentId);
+		System.out.println("PatientId: "+patientId+" "+"AppointmentId: "+appointmentId);
 		
-		VisitDetailsResponse visitResponse = new VisitDetailsResponse();
-		visitResponse.setAppointmentId(appointmentId);
-		visitResponse.setPatientId(patientId);
+		List<Object[]> visitDetails = appointmentHistoryRepo.getPatientVisitDetails(patientId, appointmentId);
 		
-		List<Diagnosis> visitDiagList = new ArrayList<>();
-		VitalSign vs = new VitalSign();
-		for(Object ob[]:visitDetails) 
-		{	
+		Optional<List<Object[]>> opt = Optional.of(visitDetails);
+	
 			
-			vs.setBloodPressure((String)ob[1]);
-			vs.setBodyTemp(((Number)ob[2]).doubleValue());
-			vs.setHeight(((Number)ob[3]).doubleValue());
-			vs.setRespirationRate(((Number)ob[4]).intValue());
-			vs.setWeight(((Number)ob[5]).doubleValue());
-			vs.setBloodPressureType((String)(ob[19]));
+			VisitDetailsResponse visitResponse = new VisitDetailsResponse();
+			visitResponse.setAppointmentId(appointmentId);
+			visitResponse.setPatientId(patientId);
 			
-			Diagnosis diag = new Diagnosis();
-			diag.setDiagnosisCode((String)ob[7]);
-			diag.setDescription((String)ob[8]);
-			visitDiagList.add(diag);
-			
+			List<Diagnosis> visitDiagList = new ArrayList<>();
+			VitalSign vs = new VitalSign();
 			Medication med =new Medication();
-			med.setDrugBrand((String)ob[10]);
-			med.setDrugForm((String)ob[11]);
-			med.setDrugGenericName((String)ob[12]);
-			med.setDrugName((String)ob[14]);
-			med.setDrugStrength((String)ob[15]);
-			
 			Procedure pr = new Procedure();
-			pr.setProcedureCode((String)ob[17]);
-			pr.setDescription((String)ob[18]);
 			
-			
-			visitResponse.setMedication(med);
-			visitResponse.setProcedure(pr);
-			
-		//	LOGGER.info("groupId : "+groupId+" sourceId : "+sourceId+" sourceId == groupId : "+(sourceId == groupId));
-			
+			for(Object ob[]:visitDetails) 
+			{	
 				
-		}
-		visitResponse.setVitalSign(vs);
-		visitResponse.setDiagnosis(visitDiagList);
-		System.out.println("VR: "+visitResponse);
-		return visitResponse;
+				vs.setBloodPressure((String)ob[1]);
+				vs.setBodyTemp(((Number)ob[2]).doubleValue());
+				vs.setHeight(((Number)ob[3]).doubleValue());
+				vs.setRespirationRate(((Number)ob[4]).intValue());
+				vs.setWeight(((Number)ob[5]).doubleValue());
+				vs.setBloodPressureType((String)(ob[19]));
+				
+				Diagnosis diag = new Diagnosis();
+				diag.setDiagnosisCode((String)ob[7]);
+				diag.setDescription((String)ob[8]);
+				visitDiagList.add(diag);
+				
+				med.setDrugBrand((String)ob[10]);
+				med.setDrugForm((String)ob[11]);
+				med.setDrugGenericName((String)ob[12]);
+				med.setDrugName((String)ob[14]);
+				med.setDrugStrength((String)ob[15]);
+			
+				pr.setProcedureCode((String)ob[17]);
+				pr.setDescription((String)ob[18]);
+				
+				visitResponse.setMedication(med);
+				visitResponse.setProcedure(pr);
+				
+			//	LOGGER.info("groupId : "+groupId+" sourceId : "+sourceId+" sourceId == groupId : "+(sourceId == groupId));
+				
+					
+			}
+			visitResponse.setVitalSign(vs);
+			visitResponse.setDiagnosis(visitDiagList);
+			
+			Optional<VitalSign> optVital=  Optional.of(vs);
+			Optional<List<Diagnosis>> optDiag = Optional.of(visitDiagList);
+			Optional<Medication> optMed = Optional.of(med);
+			Optional<Procedure> optPro = Optional.of(pr);
+			
+			//if(optMed.isEmpty() || optPro.isEmpty()) {
+			if(Optional.ofNullable(med).isEmpty() ) {
+				throw new AppointmentNotFoundException();
+			}else {
+				System.out.println("VR: "+visitResponse);
+				
+				return visitResponse;
+			}
+			
+		
+		
 	}
 
 
@@ -199,16 +267,23 @@ public class VisitServiceImpl implements VisitService{
 
 
 	@Override
-	public List<Appointment> getPatientsAppoinmentAll(Long patientId) {
-		List<Appointment> apt =appointmentRepo.getPatientsAppoinmentAll(patientId);
-		for(Appointment appoint : apt) {
+	public List<AppointmentHistory> getPatientsAppoinmentAll(Long patientId) {
+		List<AppointmentHistory> apt =appointmentHistoryRepo.getPatientsAppoinmentAll(patientId);
+		for(AppointmentHistory appoint : apt) {
 			int done = checIfDidExamination(appoint.getAppointmentId(),appoint.getPatientId());
 			System.out.println("Done: "+done);
 			
-			appoint.setDidExaminationhappened(done);
+		//	appoint.setDidExaminationhappened(done);
 		}
 		
-		return apt;
+	//	Optional<Appointment> optList= Optional.of(); //Optional doesnt works with collections
+		if(apt.size() <= 0) {
+
+			throw new AppointmentNotFoundException();
+		}else {
+	
+			return apt;
+		}
 	}
 	
 	public int checIfDidExamination(Long appointment_id,Long patient_id) {
@@ -217,6 +292,38 @@ public class VisitServiceImpl implements VisitService{
 		
 		return status;
 	
+	}
+
+	@Override
+	public List<Appointments> getAppoinmentsForPhysician(Long physicianId) {
+		List<Appointments> apt =appointmentsRepo.getAppoinmentForPhysician(physicianId);
+		for(Appointments appoint : apt) {
+			
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+			String formatedTime = appoint.getAppointmentTime().format(formatter);
+			LocalTime parsed = LocalTime.parse(formatedTime,formatter);
+			appoint.setAppointmentTime(parsed);
+			
+			int done = checIfDidExamination(appoint.getAppointmentId(),appoint.getPatientId());
+			System.out.println("Done: "+done);
+			
+		//	appoint.setDidExaminationhappened(done);
+		}
+		
+	//	Optional<Appointment> optList= Optional.of(); //Optional doesnt works with collections
+		if(apt.size() <= 0) {
+
+			throw new AppointmentNotFoundException();
+		}else {
+	
+			return apt;
+		}
+	}
+
+	@Override
+	public String updateAppointmentForOnlyConsultation(Long patientId, Long appointmentId) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 
