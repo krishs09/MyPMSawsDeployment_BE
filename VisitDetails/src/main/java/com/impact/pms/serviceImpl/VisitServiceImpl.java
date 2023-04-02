@@ -1,6 +1,7 @@
 package com.impact.pms.serviceImpl;
 
 import java.nio.file.DirectoryNotEmptyException;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -15,8 +16,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.impact.pms.customException.AppointmentNotFoundException;
+import com.impact.pms.customException.NoTimeSlotsFoundException;
+import com.impact.pms.customException.PatientNotFoundException;
 import com.impact.pms.model.AppointmentHistory;
 import com.impact.pms.model.Appointments;
+import com.impact.pms.model.BookAppointmentRequestBody;
 import com.impact.pms.model.Diagnosis;
 import com.impact.pms.model.DiagnosisMaster;
 import com.impact.pms.model.MasterDataResponse;
@@ -24,6 +28,7 @@ import com.impact.pms.model.Medication;
 import com.impact.pms.model.MedicationMaster;
 import com.impact.pms.model.Procedure;
 import com.impact.pms.model.ProcedureMaster;
+import com.impact.pms.model.UserPatient;
 import com.impact.pms.model.VisitDetailsRequest;
 import com.impact.pms.model.VisitDetailsResponse;
 import com.impact.pms.model.VitalSign;
@@ -35,6 +40,7 @@ import com.impact.pms.repository.MasterMedicationRepository;
 import com.impact.pms.repository.MasterProcedureRepository;
 import com.impact.pms.repository.MedicationRepository;
 import com.impact.pms.repository.ProcedureRepository;
+import com.impact.pms.repository.UserDetailsRepository;
 import com.impact.pms.repository.VitalSignRepository;
 import com.impact.pms.service.VisitService;
 
@@ -67,6 +73,9 @@ public class VisitServiceImpl implements VisitService{
 	
 	@Autowired
 	MasterMedicationRepository masterMedRepo;
+	
+	@Autowired
+	UserDetailsRepository userRepo;
 	
 	@Override
 	public VisitDetailsRequest saveVisitDetails(VisitDetailsRequest request) {
@@ -299,10 +308,10 @@ public class VisitServiceImpl implements VisitService{
 		List<Appointments> apt =appointmentsRepo.getAppoinmentForPhysician(physicianId);
 		for(Appointments appoint : apt) {
 			
-			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
-			String formatedTime = appoint.getAppointmentTime().format(formatter);
-			LocalTime parsed = LocalTime.parse(formatedTime,formatter);
-			appoint.setAppointmentTime(parsed);
+//			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+//			String formatedTime = appoint.getAppointmentTime().format(formatter);
+//			LocalTime parsed = LocalTime.parse(formatedTime,formatter);
+//			appoint.setAppointmentTime(parsed);
 			
 			int done = checIfDidExamination(appoint.getAppointmentId(),appoint.getPatientId());
 			System.out.println("Done: "+done);
@@ -324,6 +333,46 @@ public class VisitServiceImpl implements VisitService{
 	public String updateAppointmentForOnlyConsultation(Long patientId, Long appointmentId) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public List<Time> getAvailableTimeSlots(String date) {
+	List<Time> bookedTimeList  =appointmentsRepo.getBookedTimeSlots(date);
+	
+	if(bookedTimeList.size() <= 0) {
+		throw new NoTimeSlotsFoundException();
+	}else {
+		return bookedTimeList;
+	}
+		
+	}
+
+	@Override
+	public UserPatient getExistingPatientDetails(String firstname, String mobile, String gender) {
+		
+		Optional<UserPatient> usr = userRepo.findExistingUser(firstname,mobile,gender);
+		if (usr.isPresent()) {
+			return usr.get();
+		} else {
+			throw new PatientNotFoundException();
+		}
+	}
+
+	@Override
+	public Appointments bookAppointment(BookAppointmentRequestBody request) {
+		
+		Appointments newAppointment = new Appointments();
+		newAppointment.setActive(1);
+		newAppointment.setAppointment_with(request.getAppointment_with());
+		newAppointment.setAppointmentDate(request.getAppointmentDate());
+		newAppointment.setAppointmentTime(request.getAppointmentTime());
+		newAppointment.setPatientId(request.getPatientId());
+		newAppointment.setMeetingTitle(request.getMeetingTtile());
+		
+		
+		Appointments savedApt = appointmentsRepo.save(newAppointment);
+		
+		return savedApt;
 	}
 
 

@@ -48,6 +48,26 @@ public class GlobalExceptionHandler {
 		return new ResponseEntity<>(error,HttpStatus.NOT_FOUND);
 		 
 	}
+	
+	@ExceptionHandler(value=NoTimeSlotsFoundException.class)
+	public @ResponseBody ResponseEntity<ErrorResponse> handleTimeSlotNotFoundError() {
+		
+		
+		ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),"Time slots Not Found");
+		return new ResponseEntity<>(error,HttpStatus.NOT_FOUND);
+		 
+	}
+	
+	@ExceptionHandler(value=PatientNotFoundException.class)
+	public @ResponseBody ResponseEntity<ErrorResponse> handlePatientNotFoundError() {
+		
+		
+		ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),"Patient Not Found");
+		return new ResponseEntity<>(error,HttpStatus.NOT_FOUND);
+		 
+	}
+	
+	
 
 	
 	

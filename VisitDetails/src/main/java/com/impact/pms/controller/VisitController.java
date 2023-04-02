@@ -1,5 +1,7 @@
 package com.impact.pms.controller;
 
+import java.sql.Time;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.impact.pms.model.AppointmentHistory;
 import com.impact.pms.model.Appointments;
+import com.impact.pms.model.BookAppointmentRequestBody;
 import com.impact.pms.model.MasterDataResponse;
+import com.impact.pms.model.UserPatient;
 import com.impact.pms.model.VisitDetailsRequest;
 import com.impact.pms.model.VisitDetailsResponse;
 import com.impact.pms.service.VisitService;
@@ -81,6 +85,30 @@ public class VisitController {
 	//	VisitDetailsRequest vr = service.saveVisitDetails(request);
 
 		return "Done";
+	}
+	
+	@GetMapping("/getTimeSlots")
+	public ResponseEntity<List<Time>> getAvailableTimeSlots(@RequestParam String date){
+	
+		List<Time> bookedTimeList =  service.getAvailableTimeSlots(date);
+		return new ResponseEntity<List<Time>>(bookedTimeList,HttpStatus.OK);
+	}
+	
+	@GetMapping("/findExistingPatient")
+	public ResponseEntity<UserPatient> getExistingPatientDetails(@RequestParam String firstname, 
+			@RequestParam String mobile, @RequestParam String gender ){
+		
+		UserPatient u =service.getExistingPatientDetails(firstname,mobile,gender);
+		System.out.println(u.toString());
+		return new ResponseEntity<UserPatient>(u,HttpStatus.OK);
+	}
+	
+	@PostMapping("/saveAppointment")
+	public ResponseEntity<Appointments> bookAppointment(@RequestBody BookAppointmentRequestBody bookAppointmetnObj){
+		System.out.println("Appointment REQUEST: "+bookAppointmetnObj);
+		Appointments vr = service.bookAppointment(bookAppointmetnObj);
+
+		return new ResponseEntity<Appointments>(vr,HttpStatus.OK);
 	}
 	
 	
