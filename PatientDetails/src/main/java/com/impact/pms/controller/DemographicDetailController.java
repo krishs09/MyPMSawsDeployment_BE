@@ -1,5 +1,6 @@
 package com.impact.pms.controller;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.impact.pms.model.DemographicDetailRequest;
 import com.impact.pms.model.DemographicDetails;
+import com.impact.pms.model.Employee;
 import com.impact.pms.model.UserPatient;
 import com.impact.pms.service.DemographicDetailsService;
 
@@ -51,5 +53,12 @@ public class DemographicDetailController {
 		UserPatient u =service.getPatientDetails(patientId);
 		System.out.println(u.toString());
 		return new ResponseEntity<UserPatient>(u,HttpStatus.OK);
+	}
+	
+	@GetMapping("/getAllPhysician")
+	public ResponseEntity<List<Employee>> getAllPhysician(){
+		
+		List<Employee> empList =service.getAllPhysician();
+		return new ResponseEntity<List<Employee>>(empList,HttpStatus.OK);
 	}
 }

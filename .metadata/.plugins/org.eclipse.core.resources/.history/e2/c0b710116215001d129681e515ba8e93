@@ -1,5 +1,0 @@
-package com.impact.pms.repository;
-
-public interface MasterProcedureRepository {
-
-}

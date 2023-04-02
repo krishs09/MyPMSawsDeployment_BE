@@ -17,11 +17,13 @@ import com.impact.pms.model.Allergy;
 import com.impact.pms.model.DemographicDetailRequest;
 import com.impact.pms.model.DemographicDetails;
 import com.impact.pms.model.EmergencyContactInfo;
+import com.impact.pms.model.Employee;
 import com.impact.pms.model.UserPatient;
 import com.impact.pms.repository.AllergyRepository;
 //import com.impact.pms.repository.AllergyRepository;
 import com.impact.pms.repository.DemographicRepository;
 import com.impact.pms.repository.EmergencyContactRepository;
+import com.impact.pms.repository.EmployeeRepository;
 import com.impact.pms.repository.UserDetailsRepository;
 import com.impact.pms.service.DemographicDetailsService;
 
@@ -40,6 +42,9 @@ public class DemographicDetailsServiceImpl implements DemographicDetailsService 
 
 	@Autowired
 	UserDetailsRepository userRepo;
+	
+	@Autowired
+	EmployeeRepository empRepo;
 	
 	@Override
 	public UserPatient registerPatinet(UserPatient patient) {
@@ -159,6 +164,12 @@ public class DemographicDetailsServiceImpl implements DemographicDetailsService 
 		 */
 		
 		
+	}
+
+	@Override
+	public List<Employee> getAllPhysician() {
+		List<Employee> list = empRepo.findAll();
+		return list;
 	}
 
 
