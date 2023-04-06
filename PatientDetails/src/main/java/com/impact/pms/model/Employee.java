@@ -22,5 +22,9 @@ public class Employee {
 	private String role;
 	@Column(name="gender")
 	private String gender;
+	@Column(name="email")
+	private String email;
+	@Column(name="password")
+	private String password;
 	
 }
